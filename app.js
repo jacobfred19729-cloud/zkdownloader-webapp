@@ -16,22 +16,19 @@ const downloadSection = document.getElementById('downloadSection');
 const downloadBtn = document.getElementById('downloadBtn');
 const historyList = document.getElementById('historyList');
 const toastContainer = document.getElementById('toastContainer');
-
 // Format Tabs
-const formatTabs = document.querySelectorAll('.format-tab');
-
-// Backend URL Configuration - Auto-detect or use environment
 const BACKEND_URL = (() => {
-    // Check if we're in production (deployed)
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        // Production: Backend URL yahan set karein (Render ya Railway)
-        // TODO: Apna backend URL yahan add karein
-        return 'https://your-backend.onrender.com'; // Ya Railway URL
-        // Example: return 'https://zkdownloader-backend.onrender.com';
+    // Railway production - same server
+    if (window.location.hostname.includes('railway.app')) {
+        return ''; // ✅ Empty string for same-origin requests
     }
-    // Development: Use localhost
-    return 'http://localhost:5000';
+    // Local development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:5000';
+    }
+    return '';
 })();
+
 
 // State
 let videoInfo = null;
