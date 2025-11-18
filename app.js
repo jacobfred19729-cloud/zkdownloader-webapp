@@ -24,11 +24,10 @@ const formatTabs = document.querySelectorAll('.format-tab');
 const BACKEND_URL = (() => {
     // Check if we're in production (deployed)
     if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        // Production: Use same domain as frontend (backend deployed on same domain)
-        // Or set your backend URL here if deployed separately
-        return window.location.origin; // Same domain
-        // If backend is on different domain, uncomment and set:
-        // return 'https://your-backend.railway.app';
+        // Production: Backend URL yahan set karein (Render ya Railway)
+        // TODO: Apna backend URL yahan add karein
+        return 'https://your-backend.onrender.com'; // Ya Railway URL
+        // Example: return 'https://zkdownloader-backend.onrender.com';
     }
     // Development: Use localhost
     return 'http://localhost:5000';
