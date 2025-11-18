@@ -515,15 +515,17 @@ function startProgressPolling(downloadId) {
                 progressPollingIntervals.delete(downloadId);
                 
                 if (data.status === 'completed') {
-                    // Auto-download the file
-                    downloadCompletedFile(downloadId);
+                    // Auto-download the file (only once)
+                    if (!savedDownloads.has(downloadId)) {
+                        downloadCompletedFile(downloadId);
+                    }
                 }
             }
             
         } catch (error) {
             console.error('Progress polling error:', error);
         }
-    }, 500); // Poll every 500ms
+    }, 300); // Poll every 300ms for faster mobile detection
     
     progressPollingIntervals.set(downloadId, pollInterval);
 }
@@ -696,11 +698,23 @@ async function downloadCompletedFile(downloadId) {
 
     savedDownloads.add(downloadId);
 
+    // Update UI immediately to show completion
+    const downloadItem = document.getElementById(`download-${downloadId}`);
+    if (downloadItem) {
+        downloadItem.classList.add('completed');
+    }
+
     try {
         const download = activeDownloads.get(downloadId);
 
-        // Fetch the file as blob
-        const response = await fetch(`${BACKEND_URL}/api/get-file/${downloadId}`);
+        // Fetch the file as blob with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+        
+        const response = await fetch(`${BACKEND_URL}/api/get-file/${downloadId}`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             savedDownloads.delete(downloadId);
@@ -714,7 +728,7 @@ async function downloadCompletedFile(downloadId) {
         if (contentDisposition) {
             const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
             if (filenameMatch && filenameMatch[1]) {
-                filename = filenameMatch[1].replace(/['"]/g, '');
+                filename = filenameMatch[1].replace(/['"]]/g, '');
             }
         }
 
@@ -740,32 +754,54 @@ async function downloadCompletedFile(downloadId) {
         
         // Get blob and create download link
         const blob = await response.blob();
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = filename;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
         
-        // Cleanup
-        setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(downloadUrl);
-        }, 100);
+        // Use different approach for mobile vs desktop
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            // Mobile: use blob URL with download attribute
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = filename;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            
+            // Cleanup after a longer delay on mobile
+            setTimeout(() => {
+                try {
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(downloadUrl);
+                } catch (e) {
+                    console.log('Cleanup error:', e);
+                }
+            }, 500);
+        } else {
+            // Desktop: standard approach
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+                try {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(downloadUrl);
+                } catch (e) {
+                    console.log('Cleanup error:', e);
+                }
+            }, 100);
+        }
         
         showToast('✅ Download saved successfully!', 'success');
         
-        // Update UI after a delay
-        setTimeout(() => {
-            const downloadItem = document.getElementById(`download-${downloadId}`);
-            if (downloadItem) {
-                downloadItem.classList.add('completed');
-            }
-        }, 2000);
-        
     } catch (error) {
         savedDownloads.delete(downloadId);
+        if (downloadItem) {
+            downloadItem.classList.remove('completed');
+        }
         console.error('File download error:', error);
         showToast('Failed to save file. Please try again.', 'error');
     }
