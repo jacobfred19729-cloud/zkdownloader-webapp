@@ -4,9 +4,7 @@
   "description": "ZKDownloader - Premium Video Downloader",
   "main": "index.html",
   "scripts": {
-    "start": "python backend.py",
-    "build": "npx cap sync",
-    "android": "npx cap open android"
+    "start": "python backend.py"
   },
   "keywords": [
     "video",
